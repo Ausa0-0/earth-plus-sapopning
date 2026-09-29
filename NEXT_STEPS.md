@@ -1,21 +1,21 @@
-# Next Steps
+# สิ่งที่ควรทำต่อ
 
-## Before relying on automatic watering
+## ก่อนใช้งานระบบรดน้ำอัตโนมัติ
 
-1. Calibrate the capacitive soil sensor in the actual soil. Record the raw ADC value in dry soil and in fully watered soil, then update `SOIL_RAW_DRY` and `SOIL_RAW_WET` in `src/main.cpp`. The current values are starting points, not verified percentages.
-2. Verify the threshold behavior at 35% and 60% with the pump disconnected first. Confirm that 36-59% preserves the previous pump state.
-3. Check the relay's active level against the hardware. The firmware currently treats GPIO26 HIGH as pump ON. Use a separate, correctly rated pump supply; do not power the pump from an ESP32 GPIO or its 3.3 V output.
-4. Test sensor-disconnect behavior. In Auto mode, invalid soil readings should leave the pump OFF; in Manual mode, SW1 toggles the pump while SW2 selects Manual and SW3 selects Auto.
+1. ปรับเทียบเซนเซอร์ความชื้นดินกับดินที่ใช้งานจริง บันทึกค่า ADC ดิบขณะดินแห้งและขณะดินเปียกเต็มที่ แล้วนำไปตั้งค่า `SOIL_RAW_DRY` และ `SOIL_RAW_WET` ใน `src/main.cpp` ค่าปัจจุบันเป็นค่าเริ่มต้น ยังไม่ได้ยืนยันว่าแสดงเปอร์เซ็นต์ได้ตรงจริง
+2. ทดสอบเงื่อนไขที่ 35% และ 60% โดยยังไม่ต่อปั๊มก่อน ตรวจสอบว่าช่วง 36–59% คงสถานะปั๊มเดิม
+3. ตรวจสอบระดับสัญญาณของรีเลย์ให้ตรงกับอุปกรณ์จริง ขณะนี้ firmware ถือว่า GPIO26 เป็น HIGH เมื่อสั่งเปิดปั๊ม ให้ใช้แหล่งจ่ายไฟแยกที่เหมาะกับปั๊ม ห้ามจ่ายไฟให้ปั๊มจากขา GPIO หรือเอาต์พุต 3.3 V ของ ESP32
+4. ทดสอบกรณีถอดเซนเซอร์ ในโหมด Auto เมื่ออ่านค่าความชื้นไม่ได้ ปั๊มควรหยุดทำงาน; ในโหมด Manual ปุ่ม SW1 ใช้สลับสถานะปั๊ม, SW2 เลือก Manual และ SW3 เลือก Auto
 
-## Network and access
+## เครือข่ายและการเข้าถึง
 
-- The supplied Wi-Fi network did not connect during testing. The firmware falls back to the `AutoWater_AP` access point; the web control page has no authentication. Add an AP password and protect web controls before using this outside a supervised lab.
-- `WiFi.begin(ssid, password)` supports a conventional Wi-Fi password. Networks requiring WPA2-Enterprise or a captive portal need a different connection setup.
-- Keep `include/secrets.h` local. For a fresh checkout, copy `include/secrets.example.h` to `include/secrets.h` and enter local credentials. Do not commit the local file.
+- เครือข่าย Wi-Fi ที่กำหนดไว้เชื่อมต่อไม่สำเร็จระหว่างการทดสอบ firmware จึงเปิด Access Point สำรองชื่อ `AutoWater_AP` หน้าเว็บควบคุมยังไม่มีระบบยืนยันตัวตน ควรตั้งรหัสผ่านให้ AP และป้องกันการเข้าถึงหน้าเว็บก่อนนำไปใช้นอกห้องทดลองที่มีผู้ดูแล
+- `WiFi.begin(ssid, password)` รองรับ Wi-Fi ที่ใช้รหัสผ่านทั่วไป เครือข่ายที่ต้องยืนยันตัวตนแบบ WPA2-Enterprise หรือเปิดหน้า captive portal ต้องตั้งค่าการเชื่อมต่อเพิ่มเติม
+- เก็บ `include/secrets.h` ไว้ในเครื่องเท่านั้น เมื่อติดตั้งโปรเจกต์ใหม่ ให้คัดลอก `include/secrets.example.h` เป็น `include/secrets.h` แล้วใส่ข้อมูล Wi-Fi ในไฟล์ใหม่นั้น ห้าม commit ไฟล์ที่มีข้อมูลจริง
 
-## Final validation
+## ตรวจสอบก่อนส่งมอบ
 
-- Verify `SOIL_PIN`, `DHT_PIN`, relay, switch, and OLED pins against the assembled PCB, not only the simulation diagram.
-- Exercise every button and both modes; confirm OLED and web status agree.
-- Recheck raw sensor readings after calibration and document the measured dry/wet values.
-- The current workspace has no Git repository or remote configured. Initialize or connect it to the intended GitHub repository only after confirming visibility and reviewing the staged files for secrets.
+- ตรวจสอบ `SOIL_PIN`, `DHT_PIN` และขารีเลย์ สวิตช์ และ OLED เทียบกับแผ่นวงจรที่ประกอบจริง อย่าอ้างอิงเฉพาะ diagram จำลอง
+- ทดสอบปุ่มทุกปุ่มและทั้งสองโหมด ยืนยันว่าข้อมูลบน OLED และหน้าเว็บแสดงสถานะตรงกัน
+- ตรวจสอบค่าเซนเซอร์ดิบอีกครั้งหลังปรับเทียบ และบันทึกค่าที่วัดได้ขณะดินแห้งและเปียก
+- โฟลเดอร์ workspace ปัจจุบันยังไม่มี Git repository หรือ remote ให้สร้าง repository หรือเชื่อมต่อกับ GitHub repository ที่ต้องการ หลังยืนยันการตั้งค่า public/private และตรวจไฟล์ที่จะส่งขึ้นไปว่าไม่มีข้อมูลลับ
