@@ -1,4 +1,3 @@
-
 #include <WiFi.h>
 #include <WebServer.h>
 #include <WebSocketsServer.h>
@@ -14,10 +13,10 @@ const char* WIFI_PASS = PROJECT_WIFI_PASS;
 // Pins
 const int SOIL_PIN = 32; // H1 soil sensor AOUT
 const int DHT_PIN = 4;   // DHT data pin
-const int RELAY_PIN = 26; // Relay control pin (pump)
-const int SW1_PIN = 14; // Toggle pump in Manual mode
-const int SW2_PIN = 25; // Select Manual mode
-const int SW3_PIN = 13; // Select Auto mode
+const int PUMP_GATE_PIN = 27; // IRLZ44N MOSFET gate   control
+const int SW1_PIN = 13; // Select Auto mode
+const int SW2_PIN = 14; // Toggle pump in Manual mode
+const int SW3_PIN = 25; // Select Manual mode
 
 // Calibration for soil sensor (raw ADC values)
 // Adjust these values for your sensor: dry -> near-air reading, wet -> submerged in water
@@ -26,7 +25,6 @@ const int SOIL_RAW_WET = 1200; // raw value when wet (adjust)
 
 // Thresholds
 const int THRESHOLD_DRY = 35; // percent or equal -> consider dry -> start pump
-const int THRESHOLD_WET = 60; // percent or equal -> stop pump
 
 // Globals
 Adafruit_SSD1306 display(128, 64, &Wire, -1);
@@ -56,7 +54,22 @@ bool sw3WasPressed = false;
 
 void setPump(bool on) {
   pumpState = on;
-  digitalWrite(RELAY_PIN, on ? HIGH : LOW);
+  digitalWrite(PUMP_GATE_PIN, on ? HIGH : LOW);
+}
+
+void handleSerialPumpCommands() {
+  while (Serial.available() > 0) {
+    const char command = Serial.read();
+    if (command == '1') {
+      autoMode = false;
+      setPump(true);
+      Serial.println("Manual mode: pump ON");
+    } else if (command == '0') {
+      autoMode = false;
+      setPump(false);
+      Serial.println("Manual mode: pump OFF");
+    }
+  }
 }
 
 int readSoilRaw() {
@@ -157,8 +170,8 @@ void setup() {
   Serial.begin(115200);
   delay(100);
   // pins
-  pinMode(RELAY_PIN, OUTPUT);
-  digitalWrite(RELAY_PIN, LOW);
+  pinMode(PUMP_GATE_PIN, OUTPUT);
+  setPump(false);
   pinMode(SW1_PIN, INPUT_PULLUP);
   pinMode(SW2_PIN, INPUT_PULLUP);
   pinMode(SW3_PIN, INPUT_PULLUP);
@@ -225,6 +238,7 @@ void setup() {
 void loop() {
   server.handleClient();
   webSocket.loop();
+  handleSerialPumpCommands();
 
   unsigned long now = millis();
 
@@ -232,17 +246,24 @@ void loop() {
   bool sw1Pressed = digitalRead(SW1_PIN) == LOW;
   bool sw2Pressed = digitalRead(SW2_PIN) == LOW;
   bool sw3Pressed = digitalRead(SW3_PIN) == LOW;
-  if (sw1Pressed && !sw1WasPressed && now - lastSw1 > debounce) {
-    lastSw1 = now;
-    if (!autoMode) setPump(!pumpState);
-  }
   if (sw2Pressed && !sw2WasPressed && now - lastSw2 > debounce) {
     lastSw2 = now;
-    autoMode = false;
+    if (!autoMode) {
+      setPump(!pumpState);
+      Serial.printf("SW2: Manual pump %s\n", pumpState ? "ON" : "OFF");
+    } else {
+      Serial.println("SW2: ignored in Auto mode");
+    }
   }
   if (sw3Pressed && !sw3WasPressed && now - lastSw3 > debounce) {
     lastSw3 = now;
+    autoMode = false;
+    Serial.println("SW3: Manual mode");
+  }
+  if (sw1Pressed && !sw1WasPressed && now - lastSw1 > debounce) {
+    lastSw1 = now;
     autoMode = true;
+    Serial.println("SW1: Auto mode");
   }
   sw1WasPressed = sw1Pressed;
   sw2WasPressed = sw2Pressed;
@@ -278,13 +299,9 @@ void loop() {
     }
     if (soilRaw == 0) Serial.println("Check H1 AOUT signal and selected ADC pin");
 
-    // Apply threshold control only in Auto mode.
-    if (autoMode && soil >= 0) {
-      if (soil <= THRESHOLD_DRY) {
-        setPump(true);
-      } else if (soil >= THRESHOLD_WET) {
-        setPump(false);
-      }
+    // In Auto mode, pump only when the sensor reports dry soil.
+    if (autoMode) {
+      setPump(soil >= 0 && soil <= THRESHOLD_DRY);
     }
 
     if (displayReady) {

@@ -58,7 +58,7 @@ More information about PlatformIO Unit Testing:
 | ความชื้นในดิน | สถานะดิน | การทำงาน |
 |---|---|---|
 | `≤ 35%` | 🌵 ดินแห้ง | เปิดปั๊มน้ำ |
-| `36% - 59%` | 💧 อยู่ระหว่างช่วงกำหนด | คงสถานะปั๊มเดิม |
+| `36% - 59%` | 💧 อยู่ระหว่างช่วงกำหนด | ปิดปั๊ม |
 | `≥ 60%` | 🌱 ดินชื้น | ปิดปั๊มน้ำ |
 
 ### การทำงานแบบ Auto
@@ -77,17 +77,12 @@ More information about PlatformIO Unit Testing:
    └── ไม่ใช่
           │
           ▼
-     ความชื้น ≥ 60% ?
-          │
-          ├── ใช่ ──► ปิดปั๊มน้ำ
-          │
-          └── ไม่ใช่
-                  │
-                  ▼
-             คงสถานะเดิม
+   ความชื้น > 35% ?
+      │
+      └── ใช่ ──► ปิดปั๊มน้ำ
 ```
 
-การกำหนดค่าที่ 35% และ 60% ช่วยสร้างช่วง Hysteresis เพื่อป้องกันไม่ให้ปั๊มน้ำเปิดและปิดบ่อยเกินไปเมื่อค่าความชื้นอยู่ใกล้จุดเปลี่ยน
+เมื่ออ่านค่าความชื้นไม่ได้ ระบบจะปิดปั๊มเพื่อความปลอดภัย
 
 ---
 
@@ -95,35 +90,35 @@ More information about PlatformIO Unit Testing:
 
 ระบบมีสวิตช์ทั้งหมด 3 ตัว
 
-### 🔘 Switch 1 — Manual Pump Toggle
+### 🔘 Switch 2 — Manual Pump Toggle
 
 ใช้สลับสถานะปั๊มได้เมื่ออยู่ใน Manual Mode
 
 ```text
-Manual + กด Switch 1 → สลับ Pump ON/OFF
-Auto + กด Switch 1 → ไม่เปลี่ยนสถานะปั๊ม
+Manual + กด Switch 2 → สลับ Pump ON/OFF
+Auto + กด Switch 2 → ไม่เปลี่ยนสถานะปั๊ม
 ```
 
 ---
 
-### 🔘 Switch 2 — Manual Mode
+### 🔘 Switch 3 — Manual Mode
 
-เมื่อกด Switch 2 ระบบจะเข้าสู่โหมด Manual
+เมื่อกด Switch 3 ระบบจะเข้าสู่โหมด Manual
 
 ```text
-กด Switch 2 → Manual Mode
+กด Switch 3 → Manual Mode
 ```
 
 ---
 
-### 🔘 Switch 3 — Auto Mode
+### 🔘 Switch 1 — Auto Mode
 
-เมื่อกด Switch 3 ระบบจะเข้าสู่โหมดอัตโนมัติ โดย ESP32 ควบคุมปั๊มตามค่าความชื้น
+เมื่อกด Switch 1 ระบบจะเข้าสู่โหมดอัตโนมัติ โดย ESP32 ควบคุมปั๊มตามค่าความชื้น
 
 ```text
 Soil ≤ 35% → Pump ON
+Soil 36-59% → Pump OFF
 Soil ≥ 60% → Pump OFF
-Soil 36-59% → คงสถานะเดิม
 ```
 
 ---
@@ -203,12 +198,12 @@ Soil:34% Pump:Auto
 | ESP32 | ควบคุมระบบทั้งหมด |
 | Soil Moisture Sensor | วัดความชื้นในดิน |
 | DHT22 | วัดอุณหภูมิอากาศ |
-| Relay Module | ควบคุมปั๊มน้ำ |
+| IRLZ44N MOSFET | ควบคุมปั๊มน้ำ |
 | Water Pump | รดน้ำต้นไม้ |
 | OLED 0.96 นิ้ว I2C | แสดงข้อมูล |
-| Switch 1 | สลับปั๊มใน Manual Mode |
-| Switch 2 | เลือก Manual Mode |
-| Switch 3 | เลือก Auto Mode |
+| Switch 1 | เลือก Auto Mode |
+| Switch 2 | สลับปั๊มใน Manual Mode |
+| Switch 3 | เลือก Manual Mode |
 | Wi-Fi | เชื่อมต่อโทรศัพท์กับ ESP32 |
 
 ---
@@ -219,14 +214,14 @@ Soil:34% Pump:Auto
 |---|---:|
 | Soil Moisture Sensor | GPIO 32 |
 | DHT22 | GPIO 4 |
-| Relay / Pump | GPIO 26 |
-| Switch 1 | GPIO 14 |
-| Switch 2 | GPIO 25 |
-| Switch 3 | GPIO 13 |
+| MOSFET Gate / Pump | GPIO 27 |
+| Switch 1 | GPIO 13 |
+| Switch 2 | GPIO 14 |
+| Switch 3 | GPIO 25 |
 | OLED SDA | GPIO 21 |
 | OLED SCL | GPIO 22 |
 
-> **หมายเหตุ:** การเชื่อมต่อ Relay ควรตรวจสอบว่า Relay Module ที่ใช้งานเป็น Active HIGH หรือ Active LOW เนื่องจากแต่ละรุ่นอาจมีการทำงานแตกต่างกัน
+> **หมายเหตุ:** GPIO27 ควบคุม Gate ของ IRLZ44N โดยตรง ให้ตรวจสอบว่า Gate ต่อถูกขาและใช้แหล่งจ่ายแยกที่เหมาะกับปั๊ม ห้ามจ่ายไฟปั๊มจาก GPIO หรือขา 3.3V ของ ESP32
 
 ---
 
@@ -288,8 +283,8 @@ Libraries ที่ต้องติดตั้ง:
 if (soil <= 35) {
     setPump(true);
 }
-else if (soil >= 60) {
-    setPump(false);
+else {
+   setPump(false);
 }
 ```
 
@@ -300,13 +295,13 @@ Soil ≤ 35%
      ↓
 เปิดปั๊ม
 
-Soil ≥ 60%
+Soil 36-59%
      ↓
 ปิดปั๊ม
 
-Soil 36-59%
-     ↓
-คงสถานะเดิม
+Soil ≥ 60%
+   ↓
+ปิดปั๊ม
 ```
 
 ---
